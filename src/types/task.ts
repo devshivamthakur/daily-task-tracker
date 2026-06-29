@@ -14,17 +14,12 @@ export interface Task {
   createdAt: string;
   updatedAt: string;
   order: number;
+  daily: boolean;
+  completedDates: Record<string, string>; // date -> completedAt ISO, for daily tasks
 }
 
 export type FilterKey =
-  | "all"
-  | "completed"
-  | "pending"
-  | "overdue"
-  | "high"
-  | "today"
-  | "week"
-  | `cat:${Category}`;
+  "all" | "completed" | "pending" | "overdue" | "high" | "today" | "week" | `cat:${Category}`;
 
 export type SortKey = "newest" | "oldest" | "priority" | "due" | "alpha" | "completed";
 

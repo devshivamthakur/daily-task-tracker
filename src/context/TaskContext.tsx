@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, type ReactNode } from "react";
 import { useLocalStorage } from "@/hooks/useLocalStorage";
 import type { FilterKey, SortKey, Task } from "@/types/task";
-import { uid } from "@/utils/tasks";
+import { todayISO, uid } from "@/utils/tasks";
 import { toast } from "sonner";
 
 interface TaskContextValue {
@@ -10,11 +10,25 @@ interface TaskContextValue {
   sort: SortKey;
   search: string;
   theme: "light" | "dark";
+  selectedDate: string;
   setFilter: (f: FilterKey) => void;
   setSort: (s: SortKey) => void;
   setSearch: (s: string) => void;
+  setSelectedDate: (d: string) => void;
   toggleTheme: () => void;
-  addTask: (t: Omit<Task, "id" | "createdAt" | "updatedAt" | "completed" | "completedAt" | "archived" | "order">) => void;
+  addTask: (
+    t: Omit<
+      Task,
+      | "id"
+      | "createdAt"
+      | "updatedAt"
+      | "completed"
+      | "completedAt"
+      | "archived"
+      | "order"
+      | "completedDates"
+    >,
+  ) => void;
   updateTask: (id: string, patch: Partial<Task>) => void;
   deleteTask: (id: string) => void;
   toggleComplete: (id: string) => void;
@@ -27,10 +41,11 @@ const Ctx = createContext<TaskContextValue | null>(null);
 
 export function TaskProvider({ children }: { children: ReactNode }) {
   const [tasks, setTasks] = useLocalStorage<Task[]>("dtt.tasks", []);
-  const [filter, setFilter] = useLocalStorage<FilterKey>("dtt.filter", "all");
+  const [filter, setFilter] = useLocalStorage<FilterKey>("dtt.filter", "today");
   const [sort, setSort] = useLocalStorage<SortKey>("dtt.sort", "newest");
   const [search, setSearch] = useLocalStorage<string>("dtt.search", "");
   const [theme, setTheme] = useLocalStorage<"light" | "dark">("dtt.theme", "light");
+  const [selectedDate, setSelectedDate] = useLocalStorage<string>("dtt.selectedDate", todayISO());
 
   useEffect(() => {
     const root = document.documentElement;
@@ -43,6 +58,8 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString();
       const next: Task = {
         ...t,
+        daily: t.daily ?? false,
+        completedDates: {},
         id: uid(),
         completed: false,
         completedAt: null,
@@ -80,6 +97,18 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       setTasks((p) =>
         p.map((t) => {
           if (t.id !== id) return t;
+          if (t.daily) {
+            const date = selectedDate || todayISO();
+            const completedDates = { ...t.completedDates };
+            if (completedDates[date]) {
+              delete completedDates[date];
+              toast("Daily task unmarked");
+            } else {
+              completedDates[date] = new Date().toISOString();
+              toast.success("Daily task done! ✅");
+            }
+            return { ...t, completedDates, updatedAt: new Date().toISOString() };
+          }
           const completed = !t.completed;
           if (completed) toast.success("Task completed");
           else toast("Task restored");
@@ -92,7 +121,7 @@ export function TaskProvider({ children }: { children: ReactNode }) {
         }),
       );
     },
-    [setTasks],
+    [setTasks, selectedDate],
   );
 
   const duplicateTask = useCallback(
@@ -157,9 +186,11 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       sort,
       search,
       theme,
+      selectedDate,
       setFilter,
       setSort,
       setSearch,
+      setSelectedDate,
       toggleTheme,
       addTask,
       updateTask,
@@ -169,7 +200,26 @@ export function TaskProvider({ children }: { children: ReactNode }) {
       archiveTask,
       reorderTasks,
     }),
-    [tasks, filter, sort, search, theme, setFilter, setSort, setSearch, toggleTheme, addTask, updateTask, deleteTask, toggleComplete, duplicateTask, archiveTask, reorderTasks],
+    [
+      tasks,
+      filter,
+      sort,
+      search,
+      theme,
+      selectedDate,
+      setFilter,
+      setSort,
+      setSearch,
+      setSelectedDate,
+      toggleTheme,
+      addTask,
+      updateTask,
+      deleteTask,
+      toggleComplete,
+      duplicateTask,
+      archiveTask,
+      reorderTasks,
+    ],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

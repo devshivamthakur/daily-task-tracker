@@ -2,8 +2,17 @@ import { motion } from "framer-motion";
 import { useState, useRef } from "react";
 import type { Task } from "@/types/task";
 import { useTasks } from "@/context/TaskContext";
-import { isOverdue } from "@/utils/tasks";
-import { FiCheck, FiMoreVertical, FiEdit2, FiCopy, FiArchive, FiTrash2, FiCalendar } from "react-icons/fi";
+import { isOverdue, isTaskCompletedForDate } from "@/utils/tasks";
+import {
+  FiCheck,
+  FiMoreVertical,
+  FiEdit2,
+  FiCopy,
+  FiArchive,
+  FiTrash2,
+  FiCalendar,
+  FiRepeat,
+} from "react-icons/fi";
 
 const priorityStyle: Record<Task["priority"], string> = {
   high: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
@@ -21,10 +30,12 @@ const categoryStyle: Record<Task["category"], string> = {
 };
 
 export function TaskCard({ task, onEdit }: { task: Task; onEdit: (t: Task) => void }) {
-  const { toggleComplete, duplicateTask, archiveTask, deleteTask, reorderTasks } = useTasks();
+  const { toggleComplete, duplicateTask, archiveTask, deleteTask, reorderTasks, selectedDate } =
+    useTasks();
   const [menuOpen, setMenuOpen] = useState(false);
   const dragRef = useRef<HTMLDivElement>(null);
-  const overdue = isOverdue(task);
+  const overdue = !task.daily && isOverdue(task);
+  const isComplete = isTaskCompletedForDate(task, selectedDate);
 
   return (
     <motion.div
@@ -45,30 +56,39 @@ export function TaskCard({ task, onEdit }: { task: Task; onEdit: (t: Task) => vo
       }}
       className={
         "group relative rounded-2xl border bg-card p-4 shadow-soft transition-shadow hover:shadow-elegant " +
-        (task.completed ? "opacity-70" : "") +
+        (isComplete ? "opacity-70" : "") +
         (overdue ? " border-rose-500/40" : " border-border")
       }
     >
       <div className="flex items-start gap-3">
         <button
-          aria-label={task.completed ? "Mark incomplete" : "Mark complete"}
+          aria-label={isComplete ? "Mark incomplete" : "Mark complete"}
           onClick={() => toggleComplete(task.id)}
           className={
             "mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 transition-all " +
-            (task.completed
+            (isComplete
               ? "border-transparent bg-gradient-primary text-primary-foreground shadow-soft"
               : "border-border hover:border-primary")
           }
         >
-          {task.completed && <FiCheck className="h-3.5 w-3.5" strokeWidth={3} />}
+          {isComplete && <FiCheck className="h-3.5 w-3.5" strokeWidth={3} />}
         </button>
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${priorityStyle[task.priority]}`}>
+            {task.daily && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                <FiRepeat className="h-3 w-3" /> Daily
+              </span>
+            )}
+            <span
+              className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${priorityStyle[task.priority]}`}
+            >
               {task.priority}
             </span>
-            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider capitalize ${categoryStyle[task.category]}`}>
+            <span
+              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider capitalize ${categoryStyle[task.category]}`}
+            >
               {task.category}
             </span>
             {overdue && (
@@ -80,7 +100,7 @@ export function TaskCard({ task, onEdit }: { task: Task; onEdit: (t: Task) => vo
           <h3
             className={
               "mt-1.5 truncate text-sm font-semibold sm:text-base " +
-              (task.completed ? "line-through text-muted-foreground" : "")
+              (isComplete ? "line-through text-muted-foreground" : "")
             }
           >
             {task.title}
@@ -91,7 +111,7 @@ export function TaskCard({ task, onEdit }: { task: Task; onEdit: (t: Task) => vo
             </p>
           )}
           <div className="mt-2 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
-            {task.dueDate && (
+            {task.dueDate && !task.daily && (
               <span className="inline-flex items-center gap-1">
                 <FiCalendar className="h-3 w-3" />
                 Due {task.dueDate}
@@ -117,10 +137,39 @@ export function TaskCard({ task, onEdit }: { task: Task; onEdit: (t: Task) => vo
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 className="absolute right-0 top-9 z-20 w-40 overflow-hidden rounded-xl border border-border bg-popover shadow-elegant"
               >
-                <MenuItem icon={<FiEdit2 />} label="Edit" onClick={() => { setMenuOpen(false); onEdit(task); }} />
-                <MenuItem icon={<FiCopy />} label="Duplicate" onClick={() => { setMenuOpen(false); duplicateTask(task.id); }} />
-                <MenuItem icon={<FiArchive />} label="Archive" onClick={() => { setMenuOpen(false); archiveTask(task.id); }} />
-                <MenuItem icon={<FiTrash2 />} label="Delete" danger onClick={() => { setMenuOpen(false); deleteTask(task.id); }} />
+                <MenuItem
+                  icon={<FiEdit2 />}
+                  label="Edit"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEdit(task);
+                  }}
+                />
+                <MenuItem
+                  icon={<FiCopy />}
+                  label="Duplicate"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    duplicateTask(task.id);
+                  }}
+                />
+                <MenuItem
+                  icon={<FiArchive />}
+                  label="Archive"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    archiveTask(task.id);
+                  }}
+                />
+                <MenuItem
+                  icon={<FiTrash2 />}
+                  label="Delete"
+                  danger
+                  onClick={() => {
+                    setMenuOpen(false);
+                    deleteTask(task.id);
+                  }}
+                />
               </motion.div>
             </>
           )}

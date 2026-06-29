@@ -8,11 +8,18 @@ export const uid = () =>
 export const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export const isOverdue = (t: Task) =>
-  !t.completed && !!t.dueDate && t.dueDate < todayISO();
+  !t.daily && !t.completed && !!t.dueDate && t.dueDate < todayISO();
 
-export const isToday = (t: Task) => !!t.dueDate && t.dueDate === todayISO();
+export const isOnDate = (t: Task, date: string) => t.daily || (!!t.dueDate && t.dueDate === date);
+
+export const isToday = (t: Task, refDate?: string) => {
+  if (t.daily) return true;
+  const date = refDate || todayISO();
+  return !!t.dueDate && t.dueDate === date;
+};
 
 export const isThisWeek = (t: Task) => {
+  if (t.daily) return true;
   if (!t.dueDate) return false;
   const d = new Date(t.dueDate + "T00:00:00");
   const now = new Date();
@@ -22,6 +29,11 @@ export const isThisWeek = (t: Task) => {
   const end = new Date(start);
   end.setDate(start.getDate() + 7);
   return d >= start && d < end;
+};
+
+export const isTaskCompletedForDate = (t: Task, date: string): boolean => {
+  if (t.daily) return !!t.completedDates[date];
+  return t.completed;
 };
 
 const priorityWeight: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
@@ -46,15 +58,21 @@ export const sortTasks = (tasks: Task[], sort: SortKey): Task[] => {
   }
 };
 
-export const filterTasks = (tasks: Task[], filter: FilterKey, search: string): Task[] => {
+export const filterTasks = (
+  tasks: Task[],
+  filter: FilterKey,
+  search: string,
+  dateContext?: string,
+): Task[] => {
   const q = search.trim().toLowerCase();
+  const refDate = dateContext || todayISO();
   return tasks.filter((t) => {
     if (t.archived) return false;
     if (filter === "completed" && !t.completed) return false;
     if (filter === "pending" && t.completed) return false;
     if (filter === "overdue" && !isOverdue(t)) return false;
     if (filter === "high" && t.priority !== "high") return false;
-    if (filter === "today" && !isToday(t)) return false;
+    if (filter === "today" && !isToday(t, refDate)) return false;
     if (filter === "week" && !isThisWeek(t)) return false;
     if (filter.startsWith("cat:") && t.category !== (filter.slice(4) as Category)) return false;
     if (q) {
@@ -66,11 +84,14 @@ export const filterTasks = (tasks: Task[], filter: FilterKey, search: string): T
 };
 
 export const computeStreak = (tasks: Task[]): { current: number; longest: number } => {
-  const dates = new Set(
-    tasks
-      .filter((t) => t.completed && t.completedAt)
-      .map((t) => t.completedAt!.slice(0, 10)),
-  );
+  const dates = new Set<string>();
+  tasks.forEach((t) => {
+    if (t.daily) {
+      Object.keys(t.completedDates).forEach((d) => dates.add(d));
+    } else if (t.completed && t.completedAt) {
+      dates.add(t.completedAt!.slice(0, 10));
+    }
+  });
   let current = 0;
   const d = new Date();
   while (dates.has(d.toISOString().slice(0, 10))) {

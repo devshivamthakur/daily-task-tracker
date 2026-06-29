@@ -1,6 +1,14 @@
 import { motion } from "framer-motion";
 
-export function ProgressRing({ percent, size = 140 }: { percent: number; size?: number }) {
+export function ProgressRing({
+  percent,
+  size = 140,
+  label = "today",
+}: {
+  percent: number;
+  size?: number;
+  label?: string;
+}) {
   const stroke = 12;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
@@ -15,7 +23,14 @@ export function ProgressRing({ percent, size = 140 }: { percent: number; size?: 
             <stop offset="100%" stopColor="var(--primary-glow)" />
           </linearGradient>
         </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} stroke="var(--muted)" strokeWidth={stroke} fill="none" />
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke="var(--muted)"
+          strokeWidth={stroke}
+          fill="none"
+        />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
@@ -31,8 +46,10 @@ export function ProgressRing({ percent, size = 140 }: { percent: number; size?: 
         />
       </svg>
       <div className="absolute text-center">
-        <div className="text-3xl font-bold tracking-tight gradient-text">{Math.round(percent)}%</div>
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">today</div>
+        <div className="text-3xl font-bold tracking-tight gradient-text">
+          {Math.round(percent)}%
+        </div>
+        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       </div>
     </div>
   );

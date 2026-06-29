@@ -4,7 +4,7 @@ import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { useTasks } from "@/context/TaskContext";
 
 export function MiniCalendar() {
-  const { tasks, setFilter, setSearch } = useTasks();
+  const { tasks, selectedDate, setSelectedDate, setFilter } = useTasks();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -24,9 +24,9 @@ export function MiniCalendar() {
   const days = new Date(year, month + 1, 0).getDate();
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const cells: (number | null)[] = Array(first).fill(null).concat(
-    Array.from({ length: days }, (_, i) => i + 1),
-  );
+  const cells: (number | null)[] = Array(first)
+    .fill(null)
+    .concat(Array.from({ length: days }, (_, i) => i + 1));
 
   return (
     <motion.div
@@ -66,20 +66,27 @@ export function MiniCalendar() {
           const iso = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
           const has = datesWithTasks.has(iso);
           const isToday = iso === todayStr;
+          const isSelected = iso === selectedDate;
           return (
             <button
               key={i}
               onClick={() => {
-                setFilter("all");
-                setSearch(iso);
+                setSelectedDate(iso);
+                setFilter("today");
               }}
               className={
                 "relative aspect-square rounded-lg text-xs font-medium transition-all hover:bg-accent " +
-                (isToday ? "bg-gradient-primary text-primary-foreground shadow-soft " : "")
+                (isToday && isSelected
+                  ? "bg-gradient-primary text-primary-foreground shadow-soft "
+                  : isSelected
+                    ? "border border-primary bg-primary/10 text-primary "
+                    : isToday
+                      ? "bg-gradient-primary text-primary-foreground shadow-soft "
+                      : "")
               }
             >
               {d}
-              {has && !isToday && (
+              {has && !isToday && !isSelected && (
                 <span className="absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full bg-primary" />
               )}
             </button>

@@ -13,16 +13,23 @@ import { TaskCard } from "@/components/TaskCard";
 import { TaskModal } from "@/components/TaskModal";
 import { MiniCalendar } from "@/components/MiniCalendar";
 import { EmptyState } from "@/components/EmptyState";
-import { filterTasks, sortTasks, isToday } from "@/utils/tasks";
+import { filterTasks, isTaskCompletedForDate, sortTasks, isToday, todayISO } from "@/utils/tasks";
 import type { Task } from "@/types/task";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Daily Task Tracker — Premium Productivity" },
-      { name: "description", content: "A beautiful, minimalist daily task tracker with streaks, progress, and smooth animations. Local-first." },
+      {
+        name: "description",
+        content:
+          "A beautiful, minimalist daily task tracker with streaks, progress, and smooth animations. Local-first.",
+      },
       { property: "og:title", content: "Daily Task Tracker" },
-      { property: "og:description", content: "Plan your day. Track your progress. Build your streak." },
+      {
+        property: "og:description",
+        content: "Plan your day. Track your progress. Build your streak.",
+      },
     ],
   }),
   component: Page,
@@ -38,21 +45,21 @@ function Page() {
 }
 
 function App() {
-  const { tasks, filter, sort, search } = useTasks();
+  const { tasks, filter, sort, search, selectedDate } = useTasks();
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const lastAllDoneRef = useRef(false);
 
   const visible = useMemo(
-    () => sortTasks(filterTasks(tasks, filter, search), sort),
-    [tasks, filter, search, sort],
+    () => sortTasks(filterTasks(tasks, filter, search, selectedDate), sort),
+    [tasks, filter, search, sort, selectedDate],
   );
 
   // Confetti when all today's tasks complete
   useEffect(() => {
     const todays = tasks.filter((t) => !t.archived && isToday(t));
-    const allDone = todays.length > 0 && todays.every((t) => t.completed);
+    const allDone = todays.length > 0 && todays.every((t) => isTaskCompletedForDate(t, todayISO()));
     if (allDone && !lastAllDoneRef.current) {
       confetti({
         particleCount: 120,
@@ -69,7 +76,8 @@ function App() {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       const inField =
-        target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable);
       if (e.key === "/" && !inField) {
         e.preventDefault();
         searchRef.current?.focus();

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState } from "react";
-import { FiX } from "react-icons/fi";
+import { FiX, FiRepeat } from "react-icons/fi";
 import { CATEGORIES, PRIORITIES, type Category, type Priority, type Task } from "@/types/task";
 import { useTasks } from "@/context/TaskContext";
 
@@ -11,12 +11,13 @@ interface Props {
 }
 
 export function TaskModal({ open, onClose, editing }: Props) {
-  const { addTask, updateTask } = useTasks();
+  const { addTask, updateTask, selectedDate } = useTasks();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<Category>("personal");
   const [priority, setPriority] = useState<Priority>("medium");
   const [dueDate, setDueDate] = useState<string>("");
+  const [daily, setDaily] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -24,9 +25,10 @@ export function TaskModal({ open, onClose, editing }: Props) {
       setDescription(editing?.description ?? "");
       setCategory(editing?.category ?? "personal");
       setPriority(editing?.priority ?? "medium");
-      setDueDate(editing?.dueDate ?? "");
+      setDueDate(editing?.dueDate ?? selectedDate);
+      setDaily(editing?.daily ?? false);
     }
-  }, [open, editing]);
+  }, [open, editing, selectedDate]);
 
   useEffect(() => {
     if (!open) return;
@@ -37,7 +39,7 @@ export function TaskModal({ open, onClose, editing }: Props) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, title, description, category, priority, dueDate]);
+  }, [open, title, description, category, priority, dueDate, daily]);
 
   const submit = () => {
     if (!title.trim()) return;
@@ -46,7 +48,8 @@ export function TaskModal({ open, onClose, editing }: Props) {
       description: description.trim(),
       category,
       priority,
-      dueDate: dueDate || null,
+      daily,
+      dueDate: daily ? null : dueDate || null,
     };
     if (editing) updateTask(editing.id, payload);
     else addTask(payload);
@@ -146,6 +149,30 @@ export function TaskModal({ open, onClose, editing }: Props) {
                   />
                 </Field>
               </div>
+
+              {/* Daily toggle */}
+              <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-background px-4 py-3 transition hover:bg-muted/50">
+                <div className="relative">
+                  <input
+                    type="checkbox"
+                    checked={daily}
+                    onChange={(e) => {
+                      setDaily(e.target.checked);
+                      if (e.target.checked) setDueDate("");
+                    }}
+                    className="peer sr-only"
+                  />
+                  <div className="h-5 w-9 rounded-full border border-border bg-muted transition-all peer-checked:border-transparent peer-checked:bg-gradient-primary" />
+                  <div className="absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-soft transition-all peer-checked:translate-x-4" />
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <FiRepeat className="h-4 w-4 text-primary" />
+                  <span className="font-medium">Repeat daily</span>
+                  <span className="text-xs text-muted-foreground">
+                    — shows up every day, tracks completion per day
+                  </span>
+                </div>
+              </label>
 
               <div className="flex justify-end gap-2 pt-2">
                 <button
