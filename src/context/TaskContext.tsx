@@ -47,6 +47,15 @@ export function TaskProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useLocalStorage<"light" | "dark">("dtt.theme", "light");
   const [selectedDate, setSelectedDate] = useLocalStorage<string>("dtt.selectedDate", todayISO());
 
+  // Reset selectedDate to today if it's a past date (e.g. when opening app on a new day)
+  useEffect(() => {
+    const today = todayISO();
+    if (selectedDate < today) {
+      setSelectedDate(today);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const root = document.documentElement;
     if (theme === "dark") root.classList.add("dark");
